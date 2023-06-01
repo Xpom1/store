@@ -18,18 +18,24 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, TokenVerifyView
 from rest_framework import routers
-from operations.views import *
+from operations.views import ProductViewSet, CartAPIView, CartAPIUpdate
 
 routers = routers.DefaultRouter()
 routers.register(r'product', ProductViewSet)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/v1/', include(routers.urls)),
     path('api/v1/drf-auth', include('rest_framework.urls')),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
+
+    path('api/v1/', include(routers.urls)),
+
+    path('api/v1/cart', CartAPIView.as_view()),
+    path('api/v1/cart/<int:pk>', CartAPIUpdate.as_view())
+
+
 ]
 
 # bJCXE9oL
