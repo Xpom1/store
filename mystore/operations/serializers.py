@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Product, Cart_Product
+from .models import Product, Cart, CartProduct
 from django.contrib.auth.models import User
 
 
@@ -17,5 +17,5 @@ class ProductListViewCart(serializers.ModelSerializer):
 
 class CartSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Cart_Product
-        fields = ('product', 'quantity')
+        model = Cart
+        fields = '__all__'
