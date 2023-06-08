@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from rest_framework import generics, viewsets
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
-from rest_framework import mixins
+from rest_framework import mixins, filters
 
 from .models import Product, Cart
 from .permissions import IsAdminOrReadOnly, IsOwnerOrAdmin
@@ -19,6 +19,8 @@ class ProductViewSet(generics.ListAPIView):
 class ProductViewSmallerVersion(generics.ListAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductListViewCart
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['name', 'description', 'price']
     permission_classes = (IsAdminOrReadOnly,)
 
 
@@ -34,3 +36,6 @@ class CartAPIUpdate(generics.ListAPIView, mixins.UpdateModelMixin):
 
     def get_queryset(self):
         return Cart.objects.filter(customer=self.request.user.id)
+
+# def total_cost(user_is):
+#

@@ -38,7 +38,7 @@ class ProductPhoto(models.Model):
 
 
 class CartProduct(models.Model):
-    cart = models.ForeignKey(Cart, on_delete=models.CASCADE)
+    cart = models.ForeignKey(Cart, related_name='products', on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=1)
     timestamp = models.DateTimeField(auto_now_add=True)
@@ -46,10 +46,6 @@ class CartProduct(models.Model):
     def __str__(self):
         return f'{Cart.name_owner_cart(self.cart)} - {self.product}'
 
-
-
-# Нужно ли нам отзеркаливать поведения CartProduct? - Нужно, тк ты никак не сможешь узнать сколько конкретно у тебя в
-# заказе количества товаров
 
 class Order(models.Model):
     customer = models.ForeignKey(User, on_delete=models.CASCADE)
