@@ -12,10 +12,26 @@ class ProductListSerializer(serializers.ModelSerializer):
 class ProductListViewCart(serializers.ModelSerializer):
     class Meta:
         model = Product
-        fields = ('id', 'name', 'price', 'category')
+        fields = ('id', 'name', 'price')
+
+
+class CartProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CartProduct
+        fields = '__all__'
+
+
+class ProductCartSerializer(serializers.ModelSerializer):
+    cart_product = CartProductSerializer(source='cartproduct_set')
+
+    class Meta:
+        model = Product
+        fields = ('id', 'name', 'price', 'cart_product',)
 
 
 class CartSerializer(serializers.ModelSerializer):
+    product = ProductCartSerializer(many=True)
+
     class Meta:
         model = Cart
-        fields = '__all__'
+        fields = ('id', 'product',)

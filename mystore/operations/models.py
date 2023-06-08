@@ -45,3 +45,19 @@ class CartProduct(models.Model):
 
     def __str__(self):
         return f'{Cart.name_owner_cart(self.cart)} - {self.product}'
+
+
+
+# Нужно ли нам отзеркаливать поведения CartProduct? - Нужно, тк ты никак не сможешь узнать сколько конкретно у тебя в
+# заказе количества товаров
+
+class Order(models.Model):
+    customer = models.ForeignKey(User, on_delete=models.CASCADE)
+    product = models.ManyToManyField(Product, through='OrderProduct')
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+
+class OrderProduct(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField(default=1)
