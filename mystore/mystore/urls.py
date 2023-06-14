@@ -17,7 +17,11 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, TokenVerifyView
-from operations.views import ProductViewSet, CartAPIView, CartAPIUpdate, ProductViewSmallerVersion
+from operations.views import ProductViewSet, CartAPIView, ManyCartAPIView, ProductViewSmallerVersion
+from rest_framework import routers
+
+router = routers.DefaultRouter()
+router.register(r'api/v1/cart', CartAPIView, basename='cart')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -29,8 +33,9 @@ urlpatterns = [
     path('api/v1/product/', ProductViewSmallerVersion.as_view()),
     path('api/v1/product/<int:pk>/', ProductViewSet.as_view()),
 
-    path('api/v1/cart/', CartAPIUpdate.as_view()),
-    path('api/v1/carts/', CartAPIView.as_view())
+    path('api/v1/carts/', ManyCartAPIView.as_view()),
 ]
+
+urlpatterns += router.urls
 
 # bJCXE9oL

@@ -44,7 +44,7 @@ class CartProduct(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'{Cart.name_owner_cart(self.cart)} - {self.product}'
+        return f'{Cart.name_owner_cart(self.cart)} - {self.product} - {self.quantity}'
 
 
 class Order(models.Model):

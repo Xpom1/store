@@ -16,17 +16,20 @@ class ProductListViewCart(serializers.ModelSerializer):
 
 
 class CartProductSerializer(serializers.ModelSerializer):
+    product_id = serializers.IntegerField(source='product.id')
     product_name = serializers.CharField(source='product.name')
     product_price = serializers.FloatField(source='product.price')
 
     class Meta:
         model = CartProduct
-        fields = ('product_name', 'product_price', 'quantity', )
+        fields = ('product_id', 'product_name', 'product_price', 'quantity',)
 
 
 class CartSerializer(serializers.ModelSerializer):
+
     products = CartProductSerializer(many=True)
+    total_sum = serializers.FloatField()
 
     class Meta:
         model = Cart
-        fields = ('id', 'products',)
+        fields = ('id', 'products', 'total_sum',)
