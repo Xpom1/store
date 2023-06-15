@@ -1,4 +1,5 @@
 from django.db.models import Sum, F
+from django.db.models.functions import Least
 from django.shortcuts import render
 from rest_framework import generics, viewsets
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
@@ -74,26 +75,19 @@ class CartAPIView(viewsets.ModelViewSet):
 
         try:
             product_quantity = int(self.get_queryset()[0].product.filter(id=product_id).values()[0].get('quantity'))
-            concrete_product = self.get_queryset()[0].products.filter(product_id=product_id)
+            cart_product = self.get_queryset()[0].products.filter(product_id=product_id)
             if command.isdigit():
-                command = int(command)
-                if command <= product_quantity:
-                    concrete_product.update(quantity=command)
-                    return Handler().success_with_data(data=concrete_product)
-                return Handler().max_quantity(quantity=product_quantity)
+                cart_product.update(quantity=Least(product_quantity, int(command)))
+                return Handler().success_with_data(data=cart_product)
             elif command == 'add':
-                cart_produkt_id = concrete_product.values()[0].get('quantity')
-                if cart_produkt_id + 1 <= product_quantity:
-                    concrete_product.update(quantity=cart_produkt_id + 1)
-                    return Handler().success_with_data(data=concrete_product)
-                return Handler().max_quantity(quantity=product_quantity)
+                cart_product.update(quantity=Least(product_quantity, F('quantity') + 1))
+                return Handler().success_with_data(data=cart_product)
             elif command == 'reduce':
-                cart_produkt_id = concrete_product.values()[0].get('quantity')
-                if cart_produkt_id - 1 > 0:
-                    concrete_product.update(quantity=cart_produkt_id - 1)
-                    return Handler().success_with_data(data=concrete_product)
-                if cart_produkt_id == 1:
-                    concrete_product.delete()
+                if cart_product[0].quantity > 1:
+                    cart_product.update(quantity=Least(product_quantity, F('quantity') - 1))
+                    return Handler().success_with_data(data=cart_product)
+                else:
+                    cart_product.delete()
                     return Handler().deleted()
             else:
                 return Handler().unrecognized_command()
@@ -117,7 +111,7 @@ class CartAPIView(viewsets.ModelViewSet):
         try:
             product_id = data.get('product_id')
             cart_id = self.get_queryset()[0].id
-            product_quantity = int(Product.objects.filter(id=product_id).values()[0].get('quantity'))
+            product_quantity = Product.objects.get(id=product_id).quantity
             quantity = int(data.get('quantity'))
             if 0 < quantity <= product_quantity:
                 self.get_queryset()[0].products.create(quantity=quantity, cart_id=cart_id, product_id=product_id)

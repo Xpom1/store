@@ -7,5 +7,6 @@ class SimpleMiddleware:
 
     def __call__(self, request):
         response = self.get_response(request)
-        print('Execution time:', sum([float(i.get('time')) for i in connection.queries]))
+        print(f'Execution time: {sum([float(i.get("time")) for i in connection.queries])}'
+              f'\nNumber of queries: {len(connection.queries)}')
         return response
