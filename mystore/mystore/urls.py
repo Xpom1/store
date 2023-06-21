@@ -30,8 +30,8 @@ urlpatterns = [
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
 
-    path('api/v1/product/', ProductViewSmallerVersion.as_view()),
-    path('api/v1/product/<int:pk>/', ProductViewSet.as_view()),
+    path('api/v1/products/', ProductViewSmallerVersion.as_view()),
+    path('api/v1/products/<int:pk>/', ProductViewSet.as_view()),
 
     path('api/v1/carts/', ManyCartAPIView.as_view()),
 ]

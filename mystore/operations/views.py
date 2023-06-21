@@ -6,11 +6,10 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.decorators import action
 from rest_framework import mixins, filters
 from rest_framework.response import Response
-from rest_framework.views import APIView
 
 from .models import Product, Cart, CartProduct
 from .permissions import IsAdminOrReadOnly, IsOwnerOrAdmin
-from .serializers import ProductListSerializer, CartSerializer, ProductListViewCart, CartProductSerializer
+from .serializers import ProductListSerializer, CartSerializer, ProductListViewCart
 
 
 class ProductViewSet(generics.ListAPIView):
@@ -94,15 +93,14 @@ class CartAPIView(viewsets.ModelViewSet):
         except IndexError:
             return Handler().indexerror()
 
-    # Почему удаляет даже неизвестный ID
     @action(methods=['delete'], detail=False)
     def delete(self, request):
         data = request.data
-        try:
-            product_id = data.get('product_id')
-            self.get_queryset()[0].products.filter(product_id=product_id).delete()
+        product_id = data.get('product_id')
+        deleted, _ = self.get_queryset()[0].products.filter(product_id=product_id).delete()
+        if deleted:
             return Handler().success()
-        except IndexError:
+        else:
             return Handler().indexerror()
 
     @action(methods=['post'], detail=False)

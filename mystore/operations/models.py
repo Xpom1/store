@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from eav.decorators import register_eav
 
 
 class Сategory(models.Model):
@@ -9,12 +10,13 @@ class Сategory(models.Model):
         return f'{self.name}'
 
 
+@register_eav()
 class Product(models.Model):
     name = models.CharField(max_length=255)
     description = models.CharField(max_length=1024, null=True)
     price = models.FloatField()
     available = models.BooleanField(default=True)
-    quantity = models.IntegerField()
+    quantity = models.IntegerField(default=0)
     category = models.ManyToManyField(Сategory, related_name='products')
 
     def __str__(self):

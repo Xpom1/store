@@ -4,6 +4,8 @@ from django.contrib.auth.models import User
 
 
 class ProductListSerializer(serializers.ModelSerializer):
+    attributes = serializers.DictField(source='eav.get_values_dict')
+
     class Meta:
         model = Product
         fields = '__all__'
@@ -26,7 +28,6 @@ class CartProductSerializer(serializers.ModelSerializer):
 
 
 class CartSerializer(serializers.ModelSerializer):
-
     products = CartProductSerializer(many=True)
     total_sum = serializers.FloatField()
 
