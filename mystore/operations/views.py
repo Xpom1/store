@@ -1,3 +1,4 @@
+import json
 from django.db.models import Sum, F
 from django.db.models.functions import Least
 from django.shortcuts import render
@@ -6,37 +7,11 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.decorators import action
 from rest_framework import mixins, filters
 from rest_framework.response import Response
+from eav.models import Attribute
 
 from .models import Product, Cart, CartProduct
 from .permissions import IsAdminOrReadOnly, IsOwnerOrAdmin
 from .serializers import ProductListSerializer, CartSerializer, ProductListViewCart
-
-
-class ProductViewSet(generics.ListAPIView):
-    serializer_class = ProductListSerializer
-    permission_classes = (IsAdminOrReadOnly,)
-
-    def get_queryset(self):
-        return Product.objects.filter(id=self.kwargs['pk'])
-
-
-class ProductViewSmallerVersion(generics.ListAPIView):
-    queryset = Product.objects.all()
-    serializer_class = ProductListViewCart
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['name', 'description', 'price']
-    permission_classes = (IsAdminOrReadOnly,)
-
-
-class ManyCartAPIView(generics.ListAPIView):
-    queryset = Cart.objects.all()
-    serializer_class = CartSerializer
-    permission_classes = (IsAdminUser,)
-
-    def get_queryset(self):
-        return Cart.objects.all().annotate(
-            total_sum=Sum(F('products__quantity') * F('product__price'))
-        )
 
 
 class Handler():
@@ -60,6 +35,56 @@ class Handler():
         return Response({'error': 'Unknown command. To change it, '
                                   'you need to use "add" or "reduce" '
                                   'or enter a number of times.'})
+
+
+class ProductViewSet(generics.ListAPIView):
+    serializer_class = ProductListSerializer
+    permission_classes = (IsAdminOrReadOnly,)
+
+    def get_queryset(self):
+        return Product.objects.filter(id=self.kwargs['pk'])
+
+
+class ProductViewSmallerVersion(viewsets.ModelViewSet):
+    queryset = Product.objects.all()
+    serializer_class = ProductListViewCart
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['name', 'description', 'price']
+    permission_classes = (IsAdminOrReadOnly,)
+
+    @action(methods=['post'], detail=False)
+    def add(self, request):
+        data = request.data
+
+        name = data.get('name')
+        description = data.get('description')
+        price = data.get('price')
+        quantity = data.get('quantity')
+        category = data.get('category')
+        attributes = json.loads(data.get('attributes'))
+        prod, created = Product.objects.get_or_create(name=name, description=description, price=price,
+                                                      quantity=quantity)
+        # Категорию можно менять в POST / придумать как исправить!
+        if category:
+            prod.category.set(category)
+        for key, val in attributes.items():
+            Attribute.objects.get_or_create(slug=key, name=key, datatype=Attribute.TYPE_JSON)
+            # Переделать метод присвоения значение, тк мне нужно именно значение key, а orm берет именно сам key как параметр атрибутов
+            prod.eav.key = val
+        prod.save()
+
+        return Handler().success_with_data(data=data)
+
+
+class ManyCartAPIView(generics.ListAPIView):
+    queryset = Cart.objects.all()
+    serializer_class = CartSerializer
+    permission_classes = (IsAdminUser,)
+
+    def get_queryset(self):
+        return Cart.objects.all().annotate(
+            total_sum=Sum(F('products__quantity') * F('product__price'))
+        )
 
 
 class CartAPIView(viewsets.ModelViewSet):

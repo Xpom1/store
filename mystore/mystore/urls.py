@@ -22,6 +22,7 @@ from rest_framework import routers
 
 router = routers.DefaultRouter()
 router.register(r'api/v1/cart', CartAPIView, basename='cart')
+router.register(r'api/v1/products', ProductViewSmallerVersion, basename='products')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -30,7 +31,6 @@ urlpatterns = [
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
 
-    path('api/v1/products/', ProductViewSmallerVersion.as_view()),
     path('api/v1/products/<int:pk>/', ProductViewSet.as_view()),
 
     path('api/v1/carts/', ManyCartAPIView.as_view()),
