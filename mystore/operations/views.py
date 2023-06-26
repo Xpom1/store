@@ -36,6 +36,9 @@ class Handler():
                                   'you need to use "add" or "reduce" '
                                   'or enter a number of times.'})
 
+    def created(self):
+        return Response({'value': 'The product has already been created'})
+
 
 class ProductViewSet(generics.ListAPIView):
     serializer_class = ProductListSerializer
@@ -58,22 +61,22 @@ class ProductViewSmallerVersion(viewsets.ModelViewSet):
 
         name = data.get('name')
         description = data.get('description')
-        price = data.get('price')
+        price = ''.join(data.get('price').split())
         quantity = data.get('quantity')
         category = data.get('category')
         attributes = json.loads(data.get('attributes'))
-        prod, created = Product.objects.get_or_create(name=name, description=description, price=price,
-                                                      quantity=quantity)
-        # Категорию можно менять в POST / придумать как исправить!
-        if category:
-            prod.category.set(category)
-        for key, val in attributes.items():
-            Attribute.objects.get_or_create(slug=key, name=key, datatype=Attribute.TYPE_JSON)
-            # Переделать метод присвоения значение, тк мне нужно именно значение key, а orm берет именно сам key как параметр атрибутов
-            prod.eav.key = val
-        prod.save()
-
-        return Handler().success_with_data(data=data)
+        prod, created = Product.objects.get_or_create(name=name, defaults={'description': description, 'price': price,
+                                                                           'quantity': quantity})
+        if created:
+            if category:
+                prod.category.set(category)
+            for key, val in attributes.items():
+                # Переделать логику, что бы меньше запросов к бд было!
+                Attribute.objects.get_or_create(slug=key, name=key, datatype=Attribute.TYPE_JSON)
+                prod.eav.__setattr__(key, val)
+            prod.save()
+            return Response(ProductListSerializer(prod).data)
+        return Handler().created()
 
 
 class ManyCartAPIView(generics.ListAPIView):
