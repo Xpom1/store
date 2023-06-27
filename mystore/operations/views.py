@@ -40,12 +40,15 @@ class Handler():
         return Response({'value': 'The product has already been created'})
 
 
-class ProductViewSet(generics.ListAPIView):
+class ProductViewSet(generics.RetrieveUpdateAPIView):
     serializer_class = ProductListSerializer
     permission_classes = (IsAdminOrReadOnly,)
 
     def get_queryset(self):
         return Product.objects.filter(id=self.kwargs['pk'])
+
+    def put(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
 
 
 class ProductViewSmallerVersion(viewsets.ModelViewSet):
@@ -122,7 +125,7 @@ class CartAPIView(viewsets.ModelViewSet):
             return Handler().indexerror()
 
     @action(methods=['delete'], detail=False)
-    def delete(self, request):
+    def remove(self, request):
         data = request.data
         product_id = data.get('product_id')
         deleted, _ = self.get_queryset()[0].products.filter(product_id=product_id).delete()

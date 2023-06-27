@@ -1,10 +1,12 @@
 from rest_framework import serializers
 from .models import Product, Cart, CartProduct
-from django.contrib.auth.models import User
 
 
 class ProductListSerializer(serializers.ModelSerializer):
-    attributes = serializers.DictField(source='eav.get_values_dict')
+    # 'dict' object has no attribute 'validate_attributes' это происходит из-за того, что он не может проверить
+    # валидность attributes
+    # partial_update, но тоже не работает
+    # attributes = serializers.DictField(source='eav.get_values_dict')
 
     class Meta:
         model = Product
