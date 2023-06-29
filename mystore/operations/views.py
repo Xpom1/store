@@ -40,15 +40,23 @@ class Handler():
         return Response({'value': 'The product has already been created'})
 
 
-class ProductViewSet(generics.RetrieveUpdateAPIView):
+# viewsets заменя
+class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductListSerializer
     permission_classes = (IsAdminOrReadOnly,)
+    # Тут он должен обрабатывать /api/v1/products/1/attributes/
+    @action(methods=['put'], detail=False)
+    def attributes(self, request):
+        data = request.data
+        attributes = data.get('attributes')
+        print(attributes, self.get_queryset())
+        return Handler().success()
+
+    # def put(self, request, *args, **kwargs):
+    #     return self.update(request, *args, **kwargs)
 
     def get_queryset(self):
         return Product.objects.filter(id=self.kwargs['pk'])
-
-    def put(self, request, *args, **kwargs):
-        return self.update(request, *args, **kwargs)
 
 
 class ProductViewSmallerVersion(viewsets.ModelViewSet):
@@ -74,7 +82,6 @@ class ProductViewSmallerVersion(viewsets.ModelViewSet):
             if category:
                 prod.category.set(category)
             for key, val in attributes.items():
-                # Переделать логику, что бы меньше запросов к бд было!
                 Attribute.objects.get_or_create(slug=key, name=key, datatype=Attribute.TYPE_JSON)
                 prod.eav.__setattr__(key, val)
             prod.save()
@@ -137,6 +144,8 @@ class CartAPIView(viewsets.ModelViewSet):
     @action(methods=['post'], detail=False)
     def add(self, request):
         data = request.data
+        # Обработать ошибку добавления товара с таким же Id
+        # Добавить еще колическво товара
         try:
             product_id = data.get('product_id')
             cart_id = self.get_queryset()[0].id

@@ -31,7 +31,7 @@ urlpatterns = [
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
 
-    path('api/v1/products/<int:pk>/', ProductViewSet.as_view()),
+    path('api/v1/products/<int:pk>/', ProductViewSet.as_view({'get': 'list', 'put': 'list'})),
 
     path('api/v1/carts/', ManyCartAPIView.as_view()),
 ]

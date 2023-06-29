@@ -8,8 +8,3 @@ admin.site.register(ProductPhoto)
 admin.site.register(Сategory)
 admin.site.register(Cart)
 admin.site.register(CartProduct)
-
-# @admin.register(Cart)
-# class CartAdmin(admin.ModelAdmin):
-#     filter_horizontal = ['product']
-

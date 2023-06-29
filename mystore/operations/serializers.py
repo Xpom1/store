@@ -3,10 +3,7 @@ from .models import Product, Cart, CartProduct
 
 
 class ProductListSerializer(serializers.ModelSerializer):
-    # 'dict' object has no attribute 'validate_attributes' это происходит из-за того, что он не может проверить
-    # валидность attributes
-    # partial_update, но тоже не работает
-    # attributes = serializers.DictField(source='eav.get_values_dict')
+    attributes = serializers.DictField(source='eav.get_values_dict', read_only=True)
 
     class Meta:
         model = Product
