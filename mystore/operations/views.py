@@ -7,7 +7,7 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.decorators import action
 from rest_framework import mixins, filters
 from rest_framework.response import Response
-from eav.models import Attribute
+from eav.models import Attribute, Value
 
 from .models import Product, Cart, CartProduct
 from .permissions import IsAdminOrReadOnly, IsOwnerOrAdmin
@@ -40,20 +40,26 @@ class Handler():
         return Response({'value': 'The product has already been created'})
 
 
-# viewsets заменя
 class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductListSerializer
     permission_classes = (IsAdminOrReadOnly,)
-    # Тут он должен обрабатывать /api/v1/products/1/attributes/
-    @action(methods=['put'], detail=False)
-    def attributes(self, request):
-        data = request.data
-        attributes = data.get('attributes')
-        print(attributes, self.get_queryset())
-        return Handler().success()
 
-    # def put(self, request, *args, **kwargs):
-    #     return self.update(request, *args, **kwargs)
+    @action(methods=['put'], detail=False)
+    def attributes(self, request, pk=None):
+        data = request.data
+        prod = self.get_queryset()[0]
+        attributes = json.loads(data.get('attributes'))
+        Value.objects.filter(entity_id=prod.eav_values.pk_val).delete()
+        for key, val in attributes.items():
+            Attribute.objects.get_or_create(slug=key, name=key, datatype=Attribute.TYPE_JSON)
+            prod.eav.__setattr__(key, val)
+        prod.save()
+        return Response(ProductListSerializer(prod).data)
+
+    # Можно ли сделать так, чтобы я отправлял только 1 поле для редактировние и именно оно изменялось?
+    # Просто не очень удобно постоянно вводить все значения товара
+    def put(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
 
     def get_queryset(self):
         return Product.objects.filter(id=self.kwargs['pk'])
