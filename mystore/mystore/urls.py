@@ -15,28 +15,17 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import include, path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, TokenVerifyView
-from operations.views import ProductViewSet, CartAPIView, ManyCartAPIView, ProductViewSmallerVersion
-from rest_framework import routers
-
-router = routers.DefaultRouter()
-router.register(r'api/v1/cart', CartAPIView, basename='cart')
-router.register(r'api/v1/products', ProductViewSmallerVersion, basename='products')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/v1/drf-auth', include('rest_framework.urls')),
+    path('api/drf-auth', include('rest_framework.urls')),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
 
-    path('api/v1/products/<int:pk>/', ProductViewSet.as_view({'get': 'list'})),
-    path('api/v1/products/<int:pk>/attributes/', ProductViewSet.as_view({'put': 'attributes'})),
-
-    path('api/v1/carts/', ManyCartAPIView.as_view()),
+    path('api/v1/', include("operations.urls")),
 ]
-
-urlpatterns += router.urls
 
 # bJCXE9oL
