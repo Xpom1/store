@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import Product, Cart, CartProduct
 
 
-class ProductListSerializer(serializers.ModelSerializer):
+class ProductRetrieveSerializer(serializers.ModelSerializer):
     attributes = serializers.DictField(source='eav.get_values_dict', read_only=True)
 
     class Meta:
@@ -10,7 +10,7 @@ class ProductListSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class ProductListViewCart(serializers.ModelSerializer):
+class ProductListSerializers(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = ('id', 'name', 'price')

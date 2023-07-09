@@ -11,7 +11,7 @@ from eav.models import Attribute, Value
 
 from .models import Product, Cart, CartProduct
 from .permissions import IsAdminOrReadOnly, IsOwnerOrAdmin
-from .serializers import ProductListSerializer, CartSerializer, ProductListViewCart
+from .serializers import ProductRetrieveSerializer, CartSerializer, ProductListSerializers
 
 
 class Handler():
@@ -41,36 +41,16 @@ class Handler():
 
 
 class ProductViewSet(viewsets.ModelViewSet):
-    serializer_class = ProductListSerializer
+    serializer_class = ProductRetrieveSerializer
     permission_classes = (IsAdminOrReadOnly,)
-
-    @action(methods=['put'], detail=False)
-    def attributes(self, request, pk=None):
-        data = request.data
-        prod = self.get_queryset()[0]
-        attributes = json.loads(data.get('attributes'))
-        Value.objects.filter(entity_id=prod.eav_values.pk_val).delete()
-        for key, val in attributes.items():
-            Attribute.objects.get_or_create(slug=key, name=key, datatype=Attribute.TYPE_JSON)
-            prod.eav.__setattr__(key, val)
-        prod.save()
-        return Response(ProductListSerializer(prod).data)
-
-    # Можно ли сделать так, чтобы я отправлял только 1 поле для редактировние и именно оно изменялось?
-    # Просто не очень удобно постоянно вводить все значения товара
-    def put(self, request, *args, **kwargs):
-        return self.update(request, *args, **kwargs)
-
-    def get_queryset(self):
-        return Product.objects.filter(id=self.kwargs['pk'])
-
-
-class ProductViewSmallerVersion(viewsets.ModelViewSet):
-    queryset = Product.objects.all()
-    serializer_class = ProductListViewCart
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name', 'description', 'price']
-    permission_classes = (IsAdminOrReadOnly,)
+    queryset = Product.objects.all()
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return ProductListSerializers
+        return self.serializer_class
 
     @action(methods=['post'], detail=False)
     def add(self, request):
@@ -91,11 +71,23 @@ class ProductViewSmallerVersion(viewsets.ModelViewSet):
                 Attribute.objects.get_or_create(slug=key, name=key, datatype=Attribute.TYPE_JSON)
                 prod.eav.__setattr__(key, val)
             prod.save()
-            return Response(ProductListSerializer(prod).data)
+            return Response(ProductRetrieveSerializer(prod).data)
         return Handler().created()
 
+    @action(methods=['put'], detail=False)
+    def attributes(self, request, pk=None):
+        data = request.data
+        prod = self.get_queryset()[0]
+        attributes = json.loads(data.get('attributes'))
+        Value.objects.filter(entity_id=prod.eav_values.pk_val).delete()
+        for key, val in attributes.items():
+            Attribute.objects.get_or_create(slug=key, name=key, datatype=Attribute.TYPE_JSON)
+            prod.eav.__setattr__(key, val)
+        prod.save()
+        return Response(ProductRetrieveSerializer(prod).data)
 
-class ManyCartAPIView(generics.ListAPIView):
+
+class CartListAPIView(generics.ListAPIView):
     queryset = Cart.objects.all()
     serializer_class = CartSerializer
     permission_classes = (IsAdminUser,)
@@ -106,7 +98,7 @@ class ManyCartAPIView(generics.ListAPIView):
         )
 
 
-class CartAPIView(viewsets.ModelViewSet):
+class CartViewSet(viewsets.ModelViewSet):
     serializer_class = CartSerializer
     permission_classes = (IsOwnerOrAdmin,)
 

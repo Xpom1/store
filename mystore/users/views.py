@@ -8,19 +8,14 @@ from django.contrib.auth.models import User
 from users.serializers import UserInfoSerializer
 
 
-class LoginViewSet(viewsets.ModelViewSet):
-    @action(methods=['post'], detail=False)
-    def info(self, request):
-        data = request.data
-        username = data.get('username')
-        password = data.get('password')
-        user = User.objects.get(username=username)
-        if user is None:
-            return Response({"response": "No User exist"})
-        if user.check_password(password):
-            return Response(UserInfoSerializer(user).data)
+class UserViewSet(viewsets.ModelViewSet):
+    serializer_class = UserInfoSerializer
+    permission_classes = (AllowAny, )
 
-    @action(methods=['put'], detail=False)
+    def get_object(self):
+        return self.request.user
+
+    @action(methods=['post'], detail=False)
     def create_users(self, request):
         data = request.data
         username = data.get('username')
