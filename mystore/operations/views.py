@@ -87,7 +87,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response(ProductRetrieveSerializer(prod).data)
 
 
-class CartListAPIView(generics.ListAPIView):
+class CartListAPIViewAdmin(generics.ListAPIView):
     queryset = Cart.objects.all()
     serializer_class = CartSerializer
     permission_classes = (IsAdminUser,)

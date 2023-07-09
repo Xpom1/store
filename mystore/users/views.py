@@ -1,3 +1,4 @@
+from django.db.models import F
 from django.shortcuts import render
 from rest_framework import generics, viewsets
 from rest_framework.decorators import action
@@ -7,10 +8,12 @@ from django.contrib.auth.models import User
 
 from users.serializers import UserInfoSerializer
 
+from rest_framework.permissions import IsAuthenticated
+
 
 class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserInfoSerializer
-    permission_classes = (AllowAny, )
+    permission_classes = (AllowAny,)
 
     def get_object(self):
         return self.request.user
@@ -28,4 +31,11 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response({'response': 'This user already exists'})
 
 
+class UserBalanceViewsSet(viewsets.ModelViewSet):
+    permission_classes = (IsAuthenticated, )
 
+    @action(methods=['post'], detail=False)
+    def add_balance(self, request):
+        data = request.data
+        deposit = float(data.get('deposit'))
+        return Response({'balance': self.request.user.userbalance.add_bal(deposit)})
