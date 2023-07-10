@@ -9,7 +9,8 @@ from rest_framework import mixins, filters
 from rest_framework.response import Response
 from eav.models import Attribute, Value
 
-from .models import Product, Cart, CartProduct
+from .models import Product, Cart, CartProduct, OrderProduct, Order
+from users.models import User
 from .permissions import IsAdminOrReadOnly, IsOwnerOrAdmin
 from .serializers import ProductRetrieveSerializer, CartSerializer, ProductListSerializers
 
@@ -160,3 +161,46 @@ class CartViewSet(viewsets.ModelViewSet):
         return Cart.objects.filter(customer=self.request.user.id).annotate(
             total_sum=Sum(F('products__quantity') * F('product__price'))
         )
+
+
+# Как мне сделать оформление заказа без запутываний приложений?
+
+# Как удалить товар и получить его queryset?
+
+
+# Cart.objects.filter(customer=1).aggregate(total_sum=Sum(F('products__quantity') * F('product__price'))).get('total_sum')
+# 1320000.0
+
+# Order.objects.create(customer_id=root.id)
+
+# Order.objects.get(customer_id=1).id
+
+# for i in CartProduct.objects.filter(cart_id=1):
+#     OrderProduct.objects.create(quantity= i.quantity, order_id = 1, product_id = i.product_id)
+
+class CreateOrderViewSets(viewsets.ModelViewSet):
+    permission_classes = (IsOwnerOrAdmin,)
+
+    @action(methods=['post'], detail=False)
+    def order_create(self, request):
+        user_ = self.request.user
+        user_balance = user_.userbalance.balance
+        user_cart = user_.cart_set.get(customer=F('customer_id'))
+        total_cost = user_.cart_set.filter(
+                customer=F('customer_id')).aggregate(total_sum=Sum(F('products__quantity') * F('product__price'))).get(
+            'total_sum')
+        if total_cost:
+            # Добавить каждому товару Id order для того, что бы можно было их групировать по времени!
+            if user_balance > total_cost:
+                print('Работа с балансом')
+                print(user_.userbalance.remove_balance(total_cost))
+                order_products = user_cart.products.all()
+                OrderProduct.objects.bulk_create(order_products)
+                order_products.delete()
+                Order.objects.create(customer_id=user_.id)
+
+            else:
+                print('Не хватает баланса')
+        else:
+            print('Карзина пуста')
+        return Response(1)

@@ -18,12 +18,20 @@ class UserBalance(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     balance = models.FloatField(default=0)
 
-    def add_bal(self, value: float):
+    def add_balance(self, value: float):
         user_ = self.user
         user_.userbalance.balance = F('balance') + value
         user_.save()
         user_.refresh_from_db()
         InfoAboutRefill.objects.create(user=user_, deposit=value)
+        return user_.userbalance.balance
+
+    def remove_balance(self, value: float):
+        user_ = self.user
+        user_.userbalance.balance = F('balance') - value
+        user_.save()
+        user_.refresh_from_db()
+        InfoAboutRefill.objects.create(user=user_, deposit=-value)
         return user_.userbalance.balance
 
     def __str__(self):
