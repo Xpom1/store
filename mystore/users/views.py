@@ -33,7 +33,6 @@ class UserViewSet(viewsets.ModelViewSet):
 
 class UserBalanceViewsSet(viewsets.ModelViewSet):
     permission_classes = (IsAuthenticated,)
-    # Стоит ли переименовывать add_balance?
     @action(methods=['post'], detail=False)
     def add_balance(self, request):
         data = request.data

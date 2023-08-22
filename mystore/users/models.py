@@ -5,7 +5,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 
-class InfoAboutRefill(models.Model):
+class UserBalanceInfo(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     deposit = models.FloatField()
     time = models.DateTimeField(auto_now_add=True)
@@ -23,7 +23,7 @@ class UserBalance(models.Model):
         user_.userbalance.balance = F('balance') + value
         user_.save()
         user_.refresh_from_db()
-        InfoAboutRefill.objects.create(user=user_, deposit=value)
+        UserBalanceInfo.objects.create(user=user_, deposit=value)
         return user_.userbalance.balance
 
     def remove_balance(self, value: float):
@@ -31,7 +31,7 @@ class UserBalance(models.Model):
         user_.userbalance.balance = F('balance') - value
         user_.save()
         user_.refresh_from_db()
-        InfoAboutRefill.objects.create(user=user_, deposit=-value)
+        UserBalanceInfo.objects.create(user=user_, deposit=-value)
         return user_.userbalance.balance
 
     def __str__(self):

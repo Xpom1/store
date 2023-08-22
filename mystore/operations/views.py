@@ -8,7 +8,7 @@ from rest_framework.decorators import action
 from rest_framework import mixins, filters
 from rest_framework.response import Response
 from eav.models import Attribute, Value
-
+from django.db import transaction
 from .models import Product, Cart, CartProduct, OrderProduct, Order
 from users.models import User
 from .permissions import IsAdminOrReadOnly, IsOwnerOrAdmin
@@ -103,6 +103,18 @@ class CartViewSet(viewsets.ModelViewSet):
     serializer_class = CartSerializer
     permission_classes = (IsOwnerOrAdmin,)
 
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        # Вопрос: Можно ли как-то оптимизироать этот запрос?
+        for i in queryset[0].products.all():
+            i.quantity = min(i.product.quantity, i.quantity)
+            if i.product.quantity == 0:
+                i.delete()
+            else:
+                i.save()
+        return Response(serializer.data)
+
     @action(methods=['put'], detail=False)
     def change(self, request):
         data = request.data
@@ -163,42 +175,37 @@ class CartViewSet(viewsets.ModelViewSet):
         )
 
 
-# Как мне сделать оформление заказа без запутываний приложений?
-
-# Как удалить товар и получить его queryset?
-
-
-# Cart.objects.filter(customer=1).aggregate(total_sum=Sum(F('products__quantity') * F('product__price'))).get('total_sum')
-# 1320000.0
-
-# Order.objects.create(customer_id=root.id)
-
-# Order.objects.get(customer_id=1).id
-
-# for i in CartProduct.objects.filter(cart_id=1):
-#     OrderProduct.objects.create(quantity= i.quantity, order_id = 1, product_id = i.product_id)
-
 class CreateOrderViewSets(viewsets.ModelViewSet):
     permission_classes = (IsOwnerOrAdmin,)
 
+    @transaction.atomic
     @action(methods=['post'], detail=False)
     def order_create(self, request):
         user_ = self.request.user
         user_balance = user_.userbalance.balance
         user_cart = user_.cart_set.get(customer=F('customer_id'))
         total_cost = user_.cart_set.filter(
-                customer=F('customer_id')).aggregate(total_sum=Sum(F('products__quantity') * F('product__price'))).get(
+            customer=F('customer_id')).aggregate(total_sum=Sum(F('products__quantity') * F('product__price'))).get(
             'total_sum')
         if total_cost:
-            # Добавить каждому товару Id order для того, что бы можно было их групировать по времени!
             if user_balance > total_cost:
                 print('Работа с балансом')
                 print(user_.userbalance.remove_balance(total_cost))
+                order_id = Order.objects.create(customer_id=user_.id).id
                 order_products = user_cart.products.all()
+                for order in order_products:
+                    order.order = order_id
                 OrderProduct.objects.bulk_create(order_products)
+                for i in order_products:
+                    Product.objects.filter(id=i.product.id).update(quantity=F('quantity') - i.quantity)
+                    # Вопрос: Почему нельзя было задать через i?
+                    # Если мы переобзночаем поля i, то они сохраняются в self?
+                    # Или нужно было это делать через get_queryset?
+                    # i.product.quantity -= i.quantity
+                    # i.save()
                 order_products.delete()
-                Order.objects.create(customer_id=user_.id)
 
+                print('Готово!')
             else:
                 print('Не хватает баланса')
         else:
