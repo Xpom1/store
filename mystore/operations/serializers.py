@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Product, Cart, CartProduct
+from .models import Product, Cart, CartProduct, Order, OrderProduct
 
 
 class ProductRetrieveSerializer(serializers.ModelSerializer):
@@ -33,3 +33,26 @@ class CartSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cart
         fields = ('id', 'products', 'total_sum',)
+
+
+class ProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = ('name',)
+
+
+class OrderProductListSerializer(serializers.ModelSerializer):
+    product = ProductSerializer()
+
+    class Meta:
+        model = OrderProduct
+        fields = ('product', 'quantity', 'price', )
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    # Вопрос: Зачем нам нужен source='orderproduct_set' и почему без него ничего не работает?
+    product = OrderProductListSerializer(many=True, source='orderproduct_set')
+
+    class Meta:
+        model = Order
+        fields = '__all__'

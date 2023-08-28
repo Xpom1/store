@@ -12,7 +12,7 @@ from django.db import transaction
 from .models import Product, Cart, CartProduct, OrderProduct, Order
 from users.models import User
 from .permissions import IsAdminOrReadOnly, IsOwnerOrAdmin
-from .serializers import ProductRetrieveSerializer, CartSerializer, ProductListSerializers
+from .serializers import ProductRetrieveSerializer, CartSerializer, ProductListSerializers, OrderSerializer
 
 
 class Handler():
@@ -40,13 +40,18 @@ class Handler():
     def created(self):
         return Response({'value': 'The product has already been created'})
 
+    def not_enough_balance(self):
+        return Response({"status": "error", "message": "Not enough balance"})
+
+    def cart_empty(self):
+        return Response({"status": "error", "message": "Cart is empty"})
+
 
 class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductRetrieveSerializer
     permission_classes = (IsAdminOrReadOnly,)
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name', 'description', 'price']
-    queryset = Product.objects.all()
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -106,13 +111,11 @@ class CartViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
-        # Вопрос: Можно ли как-то оптимизироать этот запрос?
-        for i in queryset[0].products.all():
-            i.quantity = min(i.product.quantity, i.quantity)
-            if i.product.quantity == 0:
-                i.delete()
-            else:
-                i.save()
+        queryset[0].products.filter(product__quantity=0).delete()
+        per = queryset[0].products.all().select_related('product')
+        for product in per:
+            product.quantity = min(product.product.quantity, product.quantity)
+        queryset[0].products.bulk_update(per, ['quantity'])
         return Response(serializer.data)
 
     @action(methods=['put'], detail=False)
@@ -176,38 +179,34 @@ class CartViewSet(viewsets.ModelViewSet):
 
 
 class CreateOrderViewSets(viewsets.ModelViewSet):
+    serializer_class = OrderSerializer
     permission_classes = (IsOwnerOrAdmin,)
+
+    def get_queryset(self):
+        return Order.objects.filter(customer=self.request.user).order_by('-timestamp')
 
     @transaction.atomic
     @action(methods=['post'], detail=False)
     def order_create(self, request):
-        user_ = self.request.user
-        user_balance = user_.userbalance.balance
-        user_cart = user_.cart_set.get(customer=F('customer_id'))
-        total_cost = user_.cart_set.filter(
-            customer=F('customer_id')).aggregate(total_sum=Sum(F('products__quantity') * F('product__price'))).get(
-            'total_sum')
+        user = self.request.user
+        user_balance = user.userbalance.balance
+        user_cart = user.cart
+        total_cost = Cart.objects.filter(customer=user).aggregate(
+            total_sum=Sum(F('products__quantity') * F('product__price'))).get('total_sum')
         if total_cost:
             if user_balance > total_cost:
-                print('Работа с балансом')
-                print(user_.userbalance.remove_balance(total_cost))
-                order_id = Order.objects.create(customer_id=user_.id).id
+                user.userbalance.remove_balance(total_cost)
+                order_id = Order.objects.create(customer=user, total_cost=total_cost).id
                 order_products = user_cart.products.all()
-                for order in order_products:
-                    order.order = order_id
+                for product in order_products:
+                    product.order_id = order_id
+                    product.price = product.product.price
                 OrderProduct.objects.bulk_create(order_products)
                 for i in order_products:
                     Product.objects.filter(id=i.product.id).update(quantity=F('quantity') - i.quantity)
-                    # Вопрос: Почему нельзя было задать через i?
-                    # Если мы переобзночаем поля i, то они сохраняются в self?
-                    # Или нужно было это делать через get_queryset?
-                    # i.product.quantity -= i.quantity
-                    # i.save()
                 order_products.delete()
-
-                print('Готово!')
+                return Handler().success()
             else:
-                print('Не хватает баланса')
+                return Handler().not_enough_balance()
         else:
-            print('Карзина пуста')
-        return Response(1)
+            return Handler().cart_empty()

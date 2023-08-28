@@ -18,13 +18,20 @@ class Product(models.Model):
     available = models.BooleanField(default=True)
     quantity = models.IntegerField(default=0)
     category = models.ManyToManyField(Сategory, related_name='products')
+    old_price = models.FloatField()
+
+    def save(self, *args, **kwargs):
+        if self.old_price < self.price:
+            raise ValueError("Old price must be greater than or equal to price")
+        # Вопрос: Можно ли тут считать скидку?
+        super(Product, self).save(*args, **kwargs)
 
     def __str__(self):
         return f'{self.name} - {self.price}руб'
 
 
 class Cart(models.Model):
-    customer = models.ForeignKey(User, on_delete=models.PROTECT)
+    customer = models.OneToOneField(User, on_delete=models.PROTECT)
     product = models.ManyToManyField(Product, through='CartProduct')
 
     def name_owner_cart(self):
@@ -53,9 +60,11 @@ class Order(models.Model):
     customer = models.ForeignKey(User, on_delete=models.CASCADE)
     product = models.ManyToManyField(Product, through='OrderProduct')
     timestamp = models.DateTimeField(auto_now_add=True)
+    total_cost = models.PositiveIntegerField()
 
 
 class OrderProduct(models.Model):
-    cart = models.ForeignKey(Order, on_delete=models.CASCADE)
+    order = models.ForeignKey(Order, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=1)
+    price = models.PositiveIntegerField()
