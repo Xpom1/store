@@ -1,7 +1,6 @@
 import json
 from django.db.models import Sum, F
 from django.db.models.functions import Least
-from django.shortcuts import render
 from rest_framework import generics, viewsets
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.decorators import action
@@ -10,9 +9,9 @@ from rest_framework.response import Response
 from eav.models import Attribute, Value
 from django.db import transaction
 from .models import Product, Cart, CartProduct, OrderProduct, Order
-from users.models import User
 from .permissions import IsAdminOrReadOnly, IsOwnerOrAdmin
 from .serializers import ProductRetrieveSerializer, CartSerializer, ProductListSerializers, OrderSerializer
+import pandas as pd
 
 
 class Handler():
@@ -104,6 +103,22 @@ class CartListAPIViewAdmin(generics.ListAPIView):
         )
 
 
+class LoadDataFromExcel(viewsets.ModelViewSet):
+    permission_classes = (IsAdminUser,)
+
+    @action(methods=['post'], detail=False)
+    def load_data(self, request):
+        data_ = pd.DataFrame(pd.read_excel(r'operations/Продукты.xlsx'))
+        temp = []
+        for i in range(len(data_)):
+            val = data_.iloc[i].values
+            name, description, price, quantity, old_price = val[0], val[1], val[2], val[3], val[4]
+            temp.append(
+                Product(name=name, description=description, price=price, quantity=quantity, old_price=old_price))
+        Product.objects.bulk_create(temp)
+        return Handler().success()
+
+
 class CartViewSet(viewsets.ModelViewSet):
     serializer_class = CartSerializer
     permission_classes = (IsOwnerOrAdmin,)
@@ -178,7 +193,7 @@ class CartViewSet(viewsets.ModelViewSet):
         )
 
 
-class CreateOrderViewSets(viewsets.ModelViewSet):
+class CreateListOrderViewSets(viewsets.ModelViewSet):
     serializer_class = OrderSerializer
     permission_classes = (IsOwnerOrAdmin,)
 
@@ -186,8 +201,7 @@ class CreateOrderViewSets(viewsets.ModelViewSet):
         return Order.objects.filter(customer=self.request.user).order_by('-timestamp')
 
     @transaction.atomic
-    @action(methods=['post'], detail=False)
-    def order_create(self, request):
+    def create(self, request):
         user = self.request.user
         user_balance = user.userbalance.balance
         user_cart = user.cart

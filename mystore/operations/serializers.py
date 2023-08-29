@@ -35,22 +35,14 @@ class CartSerializer(serializers.ModelSerializer):
         fields = ('id', 'products', 'total_sum',)
 
 
-class ProductSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Product
-        fields = ('name',)
-
-
-class OrderProductListSerializer(serializers.ModelSerializer):
-    product = ProductSerializer()
-
-    class Meta:
-        model = OrderProduct
-        fields = ('product', 'quantity', 'price', )
-
-
 class OrderSerializer(serializers.ModelSerializer):
-    # Вопрос: Зачем нам нужен source='orderproduct_set' и почему без него ничего не работает?
+    class OrderProductListSerializer(serializers.ModelSerializer):
+        product_name = serializers.CharField(source='product.name')
+
+        class Meta:
+            model = OrderProduct
+            fields = ('product_name', 'quantity', 'price',)
+
     product = OrderProductListSerializer(many=True, source='orderproduct_set')
 
     class Meta:

@@ -1,16 +1,16 @@
 from rest_framework import routers
 from django.urls import path
-from operations.views import CartViewSet, ProductViewSet, CartListAPIViewAdmin, CreateOrderViewSets
+from operations.views import CartViewSet, ProductViewSet, CartListAPIViewAdmin, CreateListOrderViewSets, \
+    LoadDataFromExcel
 
 router = routers.DefaultRouter()
 router.register(r'cart', CartViewSet, basename='cart')
 router.register(r'products', ProductViewSet, basename='products')
-# Вопрос: Если включить router для отображения, то все перестает работать, почему?
-# router.register(r'order', CreateOrderViewSets, basename='order')
+router.register(r'order', CreateListOrderViewSets, basename='order')
 
 urlpatterns = [
     path('carts/', CartListAPIViewAdmin.as_view()),
-    path('order/', CreateOrderViewSets.as_view({'post': 'order_create'}))
+    path('load_data/', LoadDataFromExcel.as_view({'post': 'load_data'}))
 ]
 
 urlpatterns += router.urls

@@ -1,5 +1,7 @@
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.contrib.auth.models import User
+from django.db.models import F
 from eav.decorators import register_eav
 
 
@@ -19,11 +21,14 @@ class Product(models.Model):
     quantity = models.IntegerField(default=0)
     category = models.ManyToManyField(Сategory, related_name='products')
     old_price = models.FloatField()
+    discount = models.PositiveIntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(100)])
 
     def save(self, *args, **kwargs):
+        if self.old_price is None:
+            self.old_price = self.price
         if self.old_price < self.price:
             raise ValueError("Old price must be greater than or equal to price")
-        # Вопрос: Можно ли тут считать скидку?
+        self.discount = round(1 - self.price / self.old_price, 2) * 100
         super(Product, self).save(*args, **kwargs)
 
     def __str__(self):
