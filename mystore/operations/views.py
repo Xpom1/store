@@ -45,13 +45,13 @@ class Handler():
     def cart_empty(self):
         return Response({"status": "error", "message": "Cart is empty"})
 
-
+# Вопрос: Как можно закрыть этот ViewSet?
 class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductRetrieveSerializer
     permission_classes = (IsAdminOrReadOnly,)
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name', 'description', 'price']
-
+    queryset = Product.objects.all()
     def get_serializer_class(self):
         if self.action == 'list':
             return ProductListSerializers
@@ -103,19 +103,19 @@ class CartListAPIViewAdmin(generics.ListAPIView):
         )
 
 
-class LoadDataFromExcel(viewsets.ModelViewSet):
+class LoadDataFromExcelAPIView(generics.CreateAPIView):
     permission_classes = (IsAdminUser,)
 
-    @action(methods=['post'], detail=False)
-    def load_data(self, request):
-        data_ = pd.DataFrame(pd.read_excel(r'operations/Продукты.xlsx'))
-        temp = []
-        for i in range(len(data_)):
-            val = data_.iloc[i].values
-            name, description, price, quantity, old_price = val[0], val[1], val[2], val[3], val[4]
-            temp.append(
-                Product(name=name, description=description, price=price, quantity=quantity, old_price=old_price))
-        Product.objects.bulk_create(temp)
+    def create(self, request, **kwargs):
+        data_ = pd.read_excel(request.FILES['upload_file']).to_dict('records')
+        Product.objects.bulk_create(
+            [Product(name=i.get('name'),
+                     description=i.get('description'),
+                     price=i.get('price'),
+                     quantity=i.get('quantity'),
+                     old_price=i.get('old_price'),
+                     discount=i.get('discount'))
+             for i in data_])
         return Handler().success()
 
 
@@ -193,7 +193,7 @@ class CartViewSet(viewsets.ModelViewSet):
         )
 
 
-class CreateListOrderViewSets(viewsets.ModelViewSet):
+class CreateListOrderAPIView(generics.ListCreateAPIView):
     serializer_class = OrderSerializer
     permission_classes = (IsOwnerOrAdmin,)
 

@@ -24,8 +24,7 @@ class Product(models.Model):
     discount = models.PositiveIntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(100)])
 
     def save(self, *args, **kwargs):
-        if self.old_price is None:
-            self.old_price = self.price
+        self.old_price = self.old_price or self.price
         if self.old_price < self.price:
             raise ValueError("Old price must be greater than or equal to price")
         self.discount = round(1 - self.price / self.old_price, 2) * 100

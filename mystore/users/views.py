@@ -11,7 +11,7 @@ from users.serializers import UserInfoSerializer
 from rest_framework.permissions import IsAuthenticated
 
 
-class UserViewSet(viewsets.ModelViewSet):
+class UserAPIView(generics.CreateAPIView):
     serializer_class = UserInfoSerializer
     permission_classes = (AllowAny,)
 
@@ -31,12 +31,10 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response({'response': 'This user already exists'})
 
 
-class UserBalanceViewsSet(viewsets.ModelViewSet):
+class UserBalanceAPIView(generics.CreateAPIView):
     permission_classes = (IsAuthenticated,)
-    @action(methods=['post'], detail=False)
-    def add_balance(self, request):
+
+    def create(self, request):
         data = request.data
         deposit = float(data.get('deposit'))
         return Response({'balance': self.request.user.userbalance.add_balance(deposit)})
-
-
