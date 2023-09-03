@@ -103,19 +103,12 @@ class CartListAPIViewAdmin(generics.ListAPIView):
         )
 
 
-class LoadDataFromExcelAPIView(generics.CreateAPIView):
+class LoadProductsFromExcelAPIView(generics.CreateAPIView):
     permission_classes = (IsAdminUser,)
 
     def create(self, request, **kwargs):
         data_ = pd.read_excel(request.FILES['upload_file']).to_dict('records')
-        Product.objects.bulk_create(
-            [Product(name=i.get('name'),
-                     description=i.get('description'),
-                     price=i.get('price'),
-                     quantity=i.get('quantity'),
-                     old_price=i.get('old_price'),
-                     discount=i.get('discount'))
-             for i in data_])
+        Product.objects.bulk_create([Product(**i)for i in data_])
         return Handler().success()
 
 
@@ -181,7 +174,7 @@ class CartViewSet(viewsets.ModelViewSet):
             product_quantity = Product.objects.get(id=product_id).quantity
             quantity = int(data.get('quantity'))
             if 0 < quantity <= product_quantity:
-                self.get_queryset()[0].products.create(quantity=quantity, cart_id=cart_id, product_id=product_id)
+                self.get_queryset()[0].products.create()
                 return Handler().success()
             return Handler().max_quantity(product_quantity)
         except IndexError:
@@ -193,7 +186,7 @@ class CartViewSet(viewsets.ModelViewSet):
         )
 
 
-class CreateListOrderAPIView(generics.ListCreateAPIView):
+class ListCreateOrderAPIView(generics.ListCreateAPIView):
     serializer_class = OrderSerializer
     permission_classes = (IsOwnerOrAdmin,)
 

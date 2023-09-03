@@ -18,8 +18,7 @@ class UserAPIView(generics.CreateAPIView):
     def get_object(self):
         return self.request.user
 
-    @action(methods=['post'], detail=False)
-    def create_users(self, request):
+    def create(self, request, **kwargs):
         data = request.data
         username = data.get('username')
         password = data.get('password')
@@ -31,10 +30,10 @@ class UserAPIView(generics.CreateAPIView):
             return Response({'response': 'This user already exists'})
 
 
-class UserBalanceAPIView(generics.CreateAPIView):
+class RefillUserBalanceAPIView(generics.CreateAPIView):
     permission_classes = (IsAuthenticated,)
 
-    def create(self, request):
+    def create(self, request, **kwargs):
         data = request.data
         deposit = float(data.get('deposit'))
         return Response({'balance': self.request.user.userbalance.add_balance(deposit)})
