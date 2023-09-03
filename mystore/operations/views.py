@@ -12,6 +12,7 @@ from .models import Product, Cart, CartProduct, OrderProduct, Order
 from .permissions import IsAdminOrReadOnly, IsOwnerOrAdmin
 from .serializers import ProductRetrieveSerializer, CartSerializer, ProductListSerializers, OrderSerializer
 import pandas as pd
+from .tasks import load_data
 
 
 class Handler():
@@ -108,7 +109,7 @@ class LoadProductsFromExcelAPIView(generics.CreateAPIView):
 
     def create(self, request, **kwargs):
         data_ = pd.read_excel(request.FILES['upload_file']).to_dict('records')
-        Product.objects.bulk_create([Product(**i)for i in data_])
+        load_data.delay(data_)
         return Handler().success()
 
 
