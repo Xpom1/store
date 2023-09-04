@@ -72,3 +72,23 @@ class OrderProduct(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=1)
     price = models.PositiveIntegerField()
+
+
+class Rating_Feedback(models.Model):
+    # Во вьюшке должна быть проверка, что человек заказл этот товар и только тогда он сможет поставаить на него рэйтинг
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    # Вопрос: Почему не работает validators? В инете смотрел, ничего не помогло
+    rating = models.PositiveIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    feedback = models.CharField(max_length=255, blank=True)
+
+    def save(self, *args, **kwargs):
+        if self.rating is None:
+            raise ValueError("When adding feedback, you must specify the rating")
+        super(Rating_Feedback, self).save(*args, **kwargs)
+
+    class Meta:
+        unique_together = ('user', 'product')
+
+    def __str__(self):
+        return f'{self.user} - {self.product.name} - {self.rating}'
