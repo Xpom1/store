@@ -1,5 +1,5 @@
 import json
-from django.db.models import Sum, F
+from django.db.models import Sum, F, Q
 from django.db.models.functions import Least
 from rest_framework import generics, viewsets
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
@@ -8,7 +8,7 @@ from rest_framework import mixins, filters
 from rest_framework.response import Response
 from eav.models import Attribute, Value
 from django.db import transaction
-from .models import Product, Cart, CartProduct, OrderProduct, Order
+from .models import Product, Cart, CartProduct, OrderProduct, Order, Rating_Feedback
 from .permissions import IsAdminOrReadOnly, IsOwnerOrAdmin
 from .serializers import ProductRetrieveSerializer, CartSerializer, ProductListSerializers, OrderSerializer
 import pandas as pd
@@ -46,6 +46,16 @@ class Handler():
     def cart_empty(self):
         return Response({"status": "error", "message": "Cart is empty"})
 
+    def not_purchased_product(self):
+        return Response({"status": "error", "message": "Вы не можете оставить отзыв на товар, который еще не заказали"})
+
+    def rating_already_exist(self):
+        return Response({"status": "error", "message": "У вас уже есть отзыв на этот товар, вы можете его изменить"})
+
+    def rating_not_exist(self):
+        return Response({"status": "error", "message": "Вы не можете менять/удалять рэйтинг, тк еще не поставили его."})
+
+
 # Вопрос: Как можно закрыть этот ViewSet?
 class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductRetrieveSerializer
@@ -53,6 +63,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name', 'description', 'price']
     queryset = Product.objects.all()
+
     def get_serializer_class(self):
         if self.action == 'list':
             return ProductListSerializers
@@ -218,3 +229,39 @@ class ListCreateOrderAPIView(generics.ListCreateAPIView):
                 return Handler().not_enough_balance()
         else:
             return Handler().cart_empty()
+
+
+class CreateUpdateDestroyRatingFeedbackAPIView(generics.UpdateAPIView, generics.CreateAPIView, generics.DestroyAPIView):
+    permission_classes = (IsAuthenticated,)
+
+    def create(self, request, *args, **kwargs):
+        user = self.request.user
+        product = Product.objects.get(id=self.kwargs.get('pk'))
+        if not Rating_Feedback.objects.filter(user=user, product_id=product):
+            if OrderProduct.objects.filter(Q(order_id__customer=user), Q(product_id=product)):
+                data = request.data
+                Rating_Feedback.objects.create(user=user, product=product,
+                                               rating=data.get('rating'),
+                                               feedback=data.get('feedback'))
+                return Handler().success()
+            return Handler().not_purchased_product()
+        return Handler().rating_already_exist()
+
+    def update(self, request, *args, **kwargs):
+        user = self.request.user
+        product = Product.objects.get(id=self.kwargs.get('pk'))
+        rating = Rating_Feedback.objects.filter(user=user, product_id=product)
+        if rating:
+            data = request.data
+            rating.update(rating=data.get('rating'), feedback=data.get('feedback'))
+            return Handler().success()
+        return Handler().rating_not_exist()
+
+    def destroy(self, request, *args, **kwargs):
+        user = self.request.user
+        product = Product.objects.get(id=self.kwargs.get('pk'))
+        rating = Rating_Feedback.objects.filter(user=user, product_id=product)
+        if rating:
+            rating.delete()
+            return Handler().success()
+        return Handler().rating_not_exist()
