@@ -1,5 +1,5 @@
 import json
-from django.db.models import Sum, F, Q
+from django.db.models import Sum, F, Q, Avg, Count
 from django.db.models.functions import Least
 from rest_framework import generics, viewsets
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
@@ -62,7 +62,8 @@ class ProductViewSet(viewsets.ModelViewSet):
     permission_classes = (IsAdminOrReadOnly,)
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name', 'description', 'price']
-    queryset = Product.objects.all()
+    queryset = Product.objects.annotate(rating=Avg('rating_feedback__rating')).annotate(
+        count=Count('rating_feedback__rating'))
 
     def get_serializer_class(self):
         if self.action == 'list':
