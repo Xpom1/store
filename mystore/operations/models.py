@@ -78,7 +78,7 @@ class OrderProduct(models.Model):
 
 class Rating_Feedback(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, null=True)
     rating = models.PositiveIntegerField(null=True)
     feedback = models.CharField(max_length=255, null=True)
     commented = models.ForeignKey('self', on_delete=models.CASCADE, null=True, related_name='feedback_comment')
@@ -91,6 +91,8 @@ class Rating_Feedback(models.Model):
         else:
             if self.rating is not None:
                 raise ValueError("You can't leave the rating on someone else's rating")
+            self.product = None
+            # Сделать комментарий, что бы показывалось, когда добавляют комментарий с продуктом
             super(Rating_Feedback, self).save(*args, **kwargs)
 
     class Meta:
@@ -98,4 +100,4 @@ class Rating_Feedback(models.Model):
                                                name='Checking the existence of a parent')]
 
     def __str__(self):
-        return f'{self.user} - {self.product.name} - {self.rating}'
+        return f'{self.user} - {self.feedback}'

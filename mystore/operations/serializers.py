@@ -2,13 +2,20 @@ from rest_framework import serializers
 from .models import Product, Cart, CartProduct, Order, OrderProduct, Rating_Feedback
 
 
+class CommentSerializer(serializers.ModelSerializer):
+    def to_representation(self, instance):
+        self.fields['feedback_comment'] = CommentSerializer(many=True, read_only=True)
+        return super(CommentSerializer, self).to_representation(instance)
+
+    class Meta:
+        model = Rating_Feedback
+        fields = ('user_id', 'feedback', 'feedback_comment')
+
+
 class ProductRetrieveSerializer(serializers.ModelSerializer):
-    # class FindCommentSerializer(serializers.ModelSerializer):
-    #     def to_representation(self, instance):
-    #         self.fields['feedback'] = RatingFeedbackSerializer(many=False, read_only=True)
-    #         self.fields['feedback_comment'] = RatingFeedbackSerializer(many=True, read_only=True)
-    #         return super(RatingFeedbackSerializer, self).to_representation(instance)
     class RatingFeedbackSerializer(serializers.ModelSerializer):
+        feedback_comment = CommentSerializer(many=True, read_only=True)
+
         class Meta:
             model = Rating_Feedback
             fields = ('user', 'rating', 'feedback', 'id', 'feedback_comment',)
