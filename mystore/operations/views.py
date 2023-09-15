@@ -57,21 +57,26 @@ class Handler():
 
 
 # Вопрос: Как можно закрыть этот ViewSet?
-class ProductViewSet(viewsets.ModelViewSet):
+class ProductViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin, mixins.RetrieveModelMixin,
+                     mixins.ListModelMixin, mixins.UpdateModelMixin):
     serializer_class = ProductRetrieveSerializer
     permission_classes = (IsAdminOrReadOnly,)
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name', 'description', 'price']
-    queryset = Product.objects.annotate(rating=Avg('rating_feedback__rating')).annotate(
-        count=Count('rating_feedback__rating'))
+    queryset = Product.objects.annotate(rating=Avg('rating_feedback__rating'),
+                                        count=Count('rating_feedback__rating'))
+
+    # def update(self, request, *args, **kwargs):
+    #     data = request.data
+    #     Product.objects.filter(id=self.kwargs.get('pk')).update(**data)
+
 
     def get_serializer_class(self):
         if self.action == 'list':
             return ProductListSerializers
         return self.serializer_class
 
-    @action(methods=['post'], detail=False)
-    def add(self, request):
+    def create(self, request, *args, **kwargs):
         data = request.data
 
         name = data.get('name')
@@ -113,7 +118,7 @@ class CartListAPIViewAdmin(generics.ListAPIView):
     def get_queryset(self):
         return Cart.objects.all().annotate(
             total_sum=Sum(F('products__quantity') * F('product__price'))
-        )
+        ).prefetch_related('products__product')
 
 
 class LoadProductsFromExcelAPIView(generics.CreateAPIView):
@@ -238,8 +243,8 @@ class CreateUpdateDestroyRatingFeedbackAPIView(generics.UpdateAPIView, generics.
     def create(self, request, *args, **kwargs):
         user = self.request.user
         product = Product.objects.get(id=self.kwargs.get('pk'))
-        if not Rating_Feedback.objects.filter(user=user, product_id=product):
-            if OrderProduct.objects.filter(Q(order_id__customer=user), Q(product_id=product)):
+        if not Rating_Feedback.objects.filter(user=user, product_id=product).exists():
+            if OrderProduct.objects.filter(order_id__customer=user, product_id=product).exists():
                 data = request.data
                 Rating_Feedback.objects.create(user=user, product=product,
                                                rating=data.get('rating'),

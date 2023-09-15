@@ -1,7 +1,9 @@
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.contrib.auth.models import User
-from django.db.models import F
+from django.db.models import Q
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from eav.decorators import register_eav
 
 
@@ -75,20 +77,25 @@ class OrderProduct(models.Model):
 
 
 class Rating_Feedback(models.Model):
-    # Во вьюшке должна быть проверка, что человек заказл этот товар и только тогда он сможет поставаить на него рэйтинг
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    # Вопрос: Почему не работает validators? В инете смотрел, ничего не помогло
-    rating = models.PositiveIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
-    feedback = models.CharField(max_length=255, blank=True)
+    rating = models.PositiveIntegerField(null=True)
+    feedback = models.CharField(max_length=255, null=True)
+    commented = models.ForeignKey('self', on_delete=models.CASCADE, null=True, related_name='feedback_comment')
 
     def save(self, *args, **kwargs):
-        if self.rating is None:
-            raise ValueError("When adding feedback, you must specify the rating")
-        super(Rating_Feedback, self).save(*args, **kwargs)
+        if self.commented_id is None:
+            if self.rating is None:
+                raise ValueError("When adding feedback, you must specify the rating")
+            super(Rating_Feedback, self).save(*args, **kwargs)
+        else:
+            if self.rating is not None:
+                raise ValueError("You can't leave the rating on someone else's rating")
+            super(Rating_Feedback, self).save(*args, **kwargs)
 
     class Meta:
-        unique_together = ('user', 'product')
+        constraints = [models.UniqueConstraint(condition=Q(commented=None), fields=['user', 'product'],
+                                               name='Checking the existence of a parent')]
 
     def __str__(self):
         return f'{self.user} - {self.product.name} - {self.rating}'

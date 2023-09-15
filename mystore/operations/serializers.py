@@ -3,10 +3,15 @@ from .models import Product, Cart, CartProduct, Order, OrderProduct, Rating_Feed
 
 
 class ProductRetrieveSerializer(serializers.ModelSerializer):
+    # class FindCommentSerializer(serializers.ModelSerializer):
+    #     def to_representation(self, instance):
+    #         self.fields['feedback'] = RatingFeedbackSerializer(many=False, read_only=True)
+    #         self.fields['feedback_comment'] = RatingFeedbackSerializer(many=True, read_only=True)
+    #         return super(RatingFeedbackSerializer, self).to_representation(instance)
     class RatingFeedbackSerializer(serializers.ModelSerializer):
         class Meta:
             model = Rating_Feedback
-            fields = ('user', 'rating', 'feedback', )
+            fields = ('user', 'rating', 'feedback', 'id', 'feedback_comment',)
 
     attributes = serializers.DictField(source='eav.get_values_dict', read_only=True)
     rating_feedback = RatingFeedbackSerializer(source='rating_feedback_set', many=True, read_only=True)
