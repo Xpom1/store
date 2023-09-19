@@ -92,7 +92,6 @@ class Rating_Feedback(models.Model):
             if self.rating is not None:
                 raise ValueError("You can't leave the rating on someone else's rating")
             self.product = None
-            # Сделать комментарий, что бы показывалось, когда добавляют комментарий с продуктом
             super(Rating_Feedback, self).save(*args, **kwargs)
 
     class Meta:
@@ -101,3 +100,12 @@ class Rating_Feedback(models.Model):
 
     def __str__(self):
         return f'{self.user} - {self.feedback}'
+
+
+class ProductPriceInfo(models.Model):
+    price = models.FloatField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f'{self.product.name} - {self.price}'
