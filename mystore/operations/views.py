@@ -8,7 +8,7 @@ from rest_framework import mixins, filters
 from rest_framework.response import Response
 from eav.models import Attribute, Value
 from django.db import transaction
-from .models import Product, Cart, CartProduct, OrderProduct, Order, Rating_Feedback
+from .models import Product, Cart, CartProduct, OrderProduct, Order, Rating_Feedback, ProductPriceInfo
 from .permissions import IsAdminOrReadOnly, IsOwnerOrAdmin
 from .serializers import ProductRetrieveSerializer, CartSerializer, ProductListSerializers, OrderSerializer
 import pandas as pd
@@ -56,7 +56,6 @@ class Handler():
         return Response({"status": "error", "message": "Вы не можете менять/удалять рэйтинг, тк еще не поставили его."})
 
 
-# Вопрос: Как можно закрыть этот ViewSet?
 class ProductViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin, mixins.RetrieveModelMixin,
                      mixins.ListModelMixin, mixins.UpdateModelMixin):
     serializer_class = ProductRetrieveSerializer
@@ -66,10 +65,12 @@ class ProductViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin, mixins.Re
     queryset = Product.objects.annotate(rating=Avg('rating_feedback__rating'),
                                         count=Count('rating_feedback__rating'))
 
-    # def update(self, request, *args, **kwargs):
-    #     data = request.data
-    #     Product.objects.filter(id=self.kwargs.get('pk')).update(**data)
-
+    def partial_update(self, request, *args, **kwargs):
+        data = request.data
+        if data.get('price') and float(data.get('price')) != ProductPriceInfo.objects.filter(
+                product_id=kwargs.get('pk')).last().price:
+            ProductPriceInfo.objects.create(price=data.get('price'), product_id=kwargs.get('pk'))
+        return super().partial_update(request, *args, **kwargs)
 
     def get_serializer_class(self):
         if self.action == 'list':
