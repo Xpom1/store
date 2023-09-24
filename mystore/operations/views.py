@@ -55,6 +55,9 @@ class Handler():
     def rating_not_exist(self):
         return Response({"status": "error", "message": "Вы не можете менять/удалять рэйтинг, тк еще не поставили его."})
 
+    def feedback_must_be_present(self):
+        return Response({"status": "error", "message": "Чтобы поменять комментарий, вы должны указать комментарий"})
+
 
 class ProductViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin, mixins.RetrieveModelMixin,
                      mixins.ListModelMixin, mixins.UpdateModelMixin):
@@ -242,33 +245,56 @@ class CreateUpdateDestroyRatingFeedbackAPIView(generics.UpdateAPIView, generics.
     permission_classes = (IsAuthenticated,)
 
     def create(self, request, *args, **kwargs):
+        data = request.data
+        commented_id = data.get('commented_id')
         user = self.request.user
-        product = Product.objects.get(id=self.kwargs.get('pk'))
-        if not Rating_Feedback.objects.filter(user=user, product_id=product).exists():
-            if OrderProduct.objects.filter(order_id__customer=user, product_id=product).exists():
-                data = request.data
-                Rating_Feedback.objects.create(user=user, product=product,
-                                               rating=data.get('rating'),
-                                               feedback=data.get('feedback'))
-                return Handler().success()
-            return Handler().not_purchased_product()
-        return Handler().rating_already_exist()
+        if not commented_id:
+            product = Product.objects.get(id=self.kwargs.get('pk'))
+            if not Rating_Feedback.objects.filter(user=user, product_id=product).exists():
+                if OrderProduct.objects.filter(order_id__customer=user, product_id=product).exists():
+                    data = request.data
+                    Rating_Feedback.objects.create(user=user, product=product,
+                                                   rating=data.get('rating'),
+                                                   feedback=data.get('feedback'))
+                    return Handler().success()
+                return Handler().not_purchased_product()
+            return Handler().rating_already_exist()
+        else:
+            Rating_Feedback.objects.create(feedback=data.get('feedback'), user=user, commented_id=commented_id)
+            return Handler().success()
 
     def update(self, request, *args, **kwargs):
-        user = self.request.user
-        product = Product.objects.get(id=self.kwargs.get('pk'))
-        rating = Rating_Feedback.objects.filter(user=user, product_id=product)
-        if rating:
-            data = request.data
-            rating.update(rating=data.get('rating'), feedback=data.get('feedback'))
-            return Handler().success()
-        return Handler().rating_not_exist()
+        data = request.data
+        id_ = data.get('id')
+        if not id_:
+            user = self.request.user
+            product = Product.objects.get(id=self.kwargs.get('pk'))
+            rating = Rating_Feedback.objects.filter(user=user, product_id=product)
+            if rating:
+                data = request.data
+                rating.update(rating=data.get('rating'), feedback=data.get('feedback'))
+                return Handler().success()
+            return Handler().rating_not_exist()
+        else:
+            feedback = data.get('feedback')
+            if feedback:
+                Rating_Feedback.objects.filter(id=id_).update(feedback=data.get('feedback'))
+                return Handler().success()
+            return Handler().feedback_must_be_present()
 
     def destroy(self, request, *args, **kwargs):
-        user = self.request.user
-        product = Product.objects.get(id=self.kwargs.get('pk'))
-        rating = Rating_Feedback.objects.filter(user=user, product_id=product)
-        if rating:
-            rating.delete()
+        data = request.data
+        id_ = data.get('id')
+        if not id_:
+            user = self.request.user
+            product = Product.objects.get(id=self.kwargs.get('pk'))
+            rating = Rating_Feedback.objects.filter(user=user, product_id=product)
+            if rating:
+                rating.delete()
+                return Handler().success()
+            return Handler().rating_not_exist()
+        else:
+            Rating_Feedback.objects.filter(id=id_).delete()
             return Handler().success()
-        return Handler().rating_not_exist()
+
+

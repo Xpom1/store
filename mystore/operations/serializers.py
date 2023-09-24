@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Product, Cart, CartProduct, Order, OrderProduct, Rating_Feedback
+from .models import Product, Cart, CartProduct, Order, OrderProduct, Rating_Feedback, ProductPriceInfo
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -9,10 +9,15 @@ class CommentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Rating_Feedback
-        fields = ('user_id', 'feedback', 'feedback_comment')
+        fields = ('user_id', 'feedback', 'id', 'commented_id', 'feedback_comment', )
 
 
 class ProductRetrieveSerializer(serializers.ModelSerializer):
+    class ProductPriceHistory(serializers.ModelSerializer):
+        class Meta:
+            model = ProductPriceInfo
+            fields = ('price', 'timestamp', )
+
     class RatingFeedbackSerializer(serializers.ModelSerializer):
         feedback_comment = CommentSerializer(many=True, read_only=True)
 
@@ -22,6 +27,7 @@ class ProductRetrieveSerializer(serializers.ModelSerializer):
 
     attributes = serializers.DictField(source='eav.get_values_dict', read_only=True)
     rating_feedback = RatingFeedbackSerializer(source='rating_feedback_set', many=True, read_only=True)
+    product_price_history = ProductPriceHistory(many=True, read_only=True, source='productpriceinfo_set')
 
     class Meta:
         model = Product
