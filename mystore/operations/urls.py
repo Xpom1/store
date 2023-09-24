@@ -1,7 +1,7 @@
 from rest_framework import routers
 from django.urls import path
 from operations.views import CartViewSet, ProductViewSet, CartListAPIViewAdmin, ListCreateOrderAPIView, \
-    LoadProductsFromExcelAPIView, CreateUpdateDestroyRatingFeedbackAPIView
+    LoadProductsFromExcelAPIView, CreateUpdateDestroyRatingFeedbackAPIView, SaleStatsAPIView
 
 router = routers.DefaultRouter()
 router.register(r'cart', CartViewSet, basename='cart')
@@ -11,7 +11,8 @@ urlpatterns = [
     path('carts/', CartListAPIViewAdmin.as_view()),
     path('load_data/', LoadProductsFromExcelAPIView.as_view()),
     path('order/', ListCreateOrderAPIView.as_view(), name='order'),
-    path('products/<int:pk>/rating_feedback/', CreateUpdateDestroyRatingFeedbackAPIView.as_view())
+    path('products/<int:pk>/rating_feedback/', CreateUpdateDestroyRatingFeedbackAPIView.as_view()),
+    path('sale_stats/', SaleStatsAPIView.as_view())
 ]
 
 urlpatterns += router.urls

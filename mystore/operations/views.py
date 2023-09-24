@@ -298,3 +298,32 @@ class CreateUpdateDestroyRatingFeedbackAPIView(generics.UpdateAPIView, generics.
             return Handler().success()
 
 
+class SaleStatsAPIView(generics.ListCreateAPIView):
+    permission_classes = (IsAdminUser,)
+
+    def list(self, request, *args, **kwargs):
+        data = request.data
+        type_ = data.get('type')
+        if type_ == 'category':
+            a = Order.objects.values('product__category').annotate(
+                total_cost_=Sum(F('orderproduct__price') * F('orderproduct__quantity')),
+                count_sale=Sum('orderproduct__quantity'), Avg_price=Avg('orderproduct__price'))
+            b = Order.objects.values(
+                'product__category').annotate(Avg_rating=Avg('product__rating_feedback__rating'))
+            # Вопрос: Алгорит сбора данных по группам всегда одинаковый или как у set()? Обязательно ли сортировать?
+            a = sorted(a, key=lambda x: x['product__category'] if x['product__category'] is not None else 0)
+            b = sorted(b, key=lambda x: x['product__category'] if x['product__category'] is not None else 0)
+            for i in range(len(a)):
+                a[i]['Avg_rating'] = b[i].get('Avg_rating')
+            return Response(a)
+        if type_ == 'time':
+            a = Order.objects.values('timestamp__date').annotate(
+                total_cost_=Sum(F('orderproduct__price') * F('orderproduct__quantity')),
+                count_sale=Sum('orderproduct__quantity'), Avg_price=Avg('orderproduct__price'))
+            b = Order.objects.values('timestamp__date').annotate(Avg_rating=Avg('product__rating_feedback__rating'))
+
+
+
+
+
+# Order.objects.values('product__category').annotate(total_cost_=Sum(F('orderproduct__price')*F('orderproduct__quantity')), count_sale=Sum('orderproduct__quantity'), Avg_price=Avg('orderproduct__price'), Avg_rating=Avg('product__rating_feedback__rating'))
