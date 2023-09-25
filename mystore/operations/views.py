@@ -58,6 +58,13 @@ class Handler():
     def feedback_must_be_present(self):
         return Response({"status": "error", "message": "Чтобы поменять комментарий, вы должны указать комментарий"})
 
+    def incorrect_time(self):
+        return Response({"status": "error", "message": "Чтобы получить статистику вы должны указать значения времени "
+                                                       "для полей start и end"})
+
+    def incorrect_command(self):
+        return Response({"status": "error", "message": "Нет такого типа группировки, обратитесь в Swagger"})
+
 
 class ProductViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin, mixins.RetrieveModelMixin,
                      mixins.ListModelMixin, mixins.UpdateModelMixin):
@@ -316,14 +323,40 @@ class SaleStatsAPIView(generics.ListCreateAPIView):
             for i in range(len(a)):
                 a[i]['Avg_rating'] = b[i].get('Avg_rating')
             return Response(a)
-        if type_ == 'time':
-            a = Order.objects.values('timestamp__date').annotate(
+        elif type_ == 'time':
+            start = pd.to_datetime(data.get('start'), dayfirst=True)
+            end = pd.to_datetime(data.get('end'), dayfirst=True)
+            if start and end:
+                name = 'timestamp__date'
+                a = Order.objects.values('timestamp__date').filter(timestamp__date__range=[start, end]).annotate(
+                    total_cost_=Sum(F('orderproduct__price') * F('orderproduct__quantity')),
+                    count_sale=Sum('orderproduct__quantity'), Avg_price=Avg('orderproduct__price'))
+                b = Order.objects.values('timestamp__date').filter(timestamp__date__range=[start, end]).annotate(
+                    Avg_rating=Avg('product__rating_feedback__rating'))
+                a = sorted(a, key=lambda x: x['timestamp__date'])
+                b = sorted(b, key=lambda x: x['timestamp__date'])
+                for i in range(len(a)):
+                    a[i]['Avg_rating'] = b[i].get('Avg_rating')
+                return Response(a)
+            return Handler().incorrect_time()
+        elif type_ == 'cost':
+            a = Order.objects.values('orderproduct__price').annotate(
                 total_cost_=Sum(F('orderproduct__price') * F('orderproduct__quantity')),
                 count_sale=Sum('orderproduct__quantity'), Avg_price=Avg('orderproduct__price'))
-            b = Order.objects.values('timestamp__date').annotate(Avg_rating=Avg('product__rating_feedback__rating'))
-
-
-
-
-
-# Order.objects.values('product__category').annotate(total_cost_=Sum(F('orderproduct__price')*F('orderproduct__quantity')), count_sale=Sum('orderproduct__quantity'), Avg_price=Avg('orderproduct__price'), Avg_rating=Avg('product__rating_feedback__rating'))
+            b = Order.objects.values('orderproduct__price').annotate(Avg_rating=Avg('product__rating_feedback__rating'))
+            a = sorted(a, key=lambda x: x['orderproduct__price'])
+            b = sorted(b, key=lambda x: x['orderproduct__price'])
+            for i in range(len(a)):
+                a[i]['Avg_rating'] = b[i].get('Avg_rating')
+            return Response(a)
+        elif type_ == 'users':
+            a = Order.objects.values('customer').annotate(
+                total_cost_=Sum(F('orderproduct__price') * F('orderproduct__quantity')),
+                count_sale=Sum('orderproduct__quantity'), Avg_price=Avg('orderproduct__price'))
+            b = Order.objects.values('customer').annotate(Avg_rating=Avg('product__rating_feedback__rating'))
+            a = sorted(a, key=lambda x: x['customer'])
+            b = sorted(b, key=lambda x: x['customer'])
+            for i in range(len(a)):
+                a[i]['Avg_rating'] = b[i].get('Avg_rating')
+            return Response(a)
+        return Handler().incorrect_command()
