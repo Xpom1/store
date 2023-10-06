@@ -1,6 +1,7 @@
 import json
 from django.db.models import Sum, F, Q, Avg, Count
 from django.db.models.functions import Least
+from django.utils.decorators import method_decorator
 from rest_framework import generics, viewsets
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.decorators import action
@@ -14,7 +15,7 @@ from .serializers import ProductRetrieveSerializer, CartSerializer, ProductListS
 import pandas as pd
 from .tasks import load_data
 from django.db.models import Prefetch
-from datetime import date
+from drf_yasg.utils import swagger_auto_schema
 
 
 class Handler():
@@ -262,7 +263,6 @@ class CreateUpdateDestroyRatingFeedbackAPIView(generics.UpdateAPIView, generics.
             product = Product.objects.get(id=self.kwargs.get('pk'))
             if not Rating_Feedback.objects.filter(user=user, product_id=product).exists():
                 if OrderProduct.objects.filter(order_id__customer=user, product_id=product).exists():
-                    data = request.data
                     Rating_Feedback.objects.create(user=user, product=product,
                                                    rating=data.get('rating'),
                                                    feedback=data.get('feedback'))
@@ -308,7 +308,7 @@ class CreateUpdateDestroyRatingFeedbackAPIView(generics.UpdateAPIView, generics.
             return Handler().success()
 
 
-class SaleStatsAPIView(generics.ListCreateAPIView):
+class SaleStatsAPIView(generics.ListAPIView):
     permission_classes = (IsAdminUser,)
 
     def list(self, request, *args, **kwargs):
@@ -319,56 +319,21 @@ class SaleStatsAPIView(generics.ListCreateAPIView):
         data = request.data
         type_ = data.get('type')
         filter_ = data.get('filter')
-        value = json.loads(data.get('value'))
-        # Записать словарик и сделать проверку
-        print(Order.objects.filter(**{filtering.get(filter_): value}).values(grouping.get(type_)))
-
-        if type_ == 'category':
-            a = Order.objects.values('product__category').annotate(
+        if type_ and filter_:
+            value = json.loads(data.get('value'))
+            a = Order.objects.filter(**{filtering.get(filter_): value}).values(grouping.get(type_)).annotate(
                 total_cost_=Sum(F('orderproduct__price') * F('orderproduct__quantity')),
                 count_sale=Sum('orderproduct__quantity'), Avg_price=Avg('orderproduct__price'))
-            b = Order.objects.values(
-                'product__category').annotate(Avg_rating=Avg('product__rating_feedback__rating'))
-            # Вопрос: Алгорит сбора данных по группам всегда одинаковый или как у set()? Обязательно ли сортировать?
-            a = sorted(a, key=lambda x: x['product__category'] if x['product__category'] is not None else 0)
-            b = sorted(b, key=lambda x: x['product__category'] if x['product__category'] is not None else 0)
+            b = Order.objects.filter(**{filtering.get(filter_): value}).values(grouping.get(type_)).annotate(
+                Avg_rating=Avg('product__rating_feedback__rating'))
             for i in range(len(a)):
                 a[i]['Avg_rating'] = b[i].get('Avg_rating')
             return Response(a)
-        elif type_ == 'time':
-            start = pd.to_datetime(data.get('start'), dayfirst=True)
-            end = pd.to_datetime(data.get('end'), dayfirst=True)
-            if start and end:
-                name = 'timestamp__date'
-                a = Order.objects.values('timestamp__date').filter(timestamp__date__range=[start, end]).annotate(
-                    total_cost_=Sum(F('orderproduct__price') * F('orderproduct__quantity')),
-                    count_sale=Sum('orderproduct__quantity'), Avg_price=Avg('orderproduct__price'))
-                b = Order.objects.values('timestamp__date').filter(timestamp__date__range=[start, end]).annotate(
-                    Avg_rating=Avg('product__rating_feedback__rating'))
-                a = sorted(a, key=lambda x: x['timestamp__date'])
-                b = sorted(b, key=lambda x: x['timestamp__date'])
-                for i in range(len(a)):
-                    a[i]['Avg_rating'] = b[i].get('Avg_rating')
-                return Response(a)
-            return Handler().incorrect_time()
-        elif type_ == 'cost':
-            a = Order.objects.values('orderproduct__price').annotate(
+        else:
+            a = Order.objects.values(grouping.get(type_)).annotate(
                 total_cost_=Sum(F('orderproduct__price') * F('orderproduct__quantity')),
                 count_sale=Sum('orderproduct__quantity'), Avg_price=Avg('orderproduct__price'))
-            b = Order.objects.values('orderproduct__price').annotate(Avg_rating=Avg('product__rating_feedback__rating'))
-            a = sorted(a, key=lambda x: x['orderproduct__price'])
-            b = sorted(b, key=lambda x: x['orderproduct__price'])
+            b = Order.objects.values(grouping.get(type_)).annotate(Avg_rating=Avg('product__rating_feedback__rating'))
             for i in range(len(a)):
                 a[i]['Avg_rating'] = b[i].get('Avg_rating')
             return Response(a)
-        elif type_ == 'users':
-            a = Order.objects.values('customer').annotate(
-                total_cost_=Sum(F('orderproduct__price') * F('orderproduct__quantity')),
-                count_sale=Sum('orderproduct__quantity'), Avg_price=Avg('orderproduct__price'))
-            b = Order.objects.values('customer').annotate(Avg_rating=Avg('product__rating_feedback__rating'))
-            a = sorted(a, key=lambda x: x['customer'])
-            b = sorted(b, key=lambda x: x['customer'])
-            for i in range(len(a)):
-                a[i]['Avg_rating'] = b[i].get('Avg_rating')
-            return Response(a)
-        return Handler().incorrect_command()
