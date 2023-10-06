@@ -13,6 +13,8 @@ from .permissions import IsAdminOrReadOnly, IsOwnerOrAdmin
 from .serializers import ProductRetrieveSerializer, CartSerializer, ProductListSerializers, OrderSerializer
 import pandas as pd
 from .tasks import load_data
+from django.db.models import Prefetch
+from datetime import date
 
 
 class Handler():
@@ -73,7 +75,8 @@ class ProductViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin, mixins.Re
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name', 'description', 'price']
     queryset = Product.objects.annotate(rating=Avg('rating_feedback__rating'),
-                                        count=Count('rating_feedback__rating'))
+                                        count=Count('rating_feedback__rating')).prefetch_related(
+        Prefetch('productpriceinfo_set', queryset=ProductPriceInfo.objects.order_by('timestamp')))
 
     def partial_update(self, request, *args, **kwargs):
         data = request.data
@@ -309,8 +312,17 @@ class SaleStatsAPIView(generics.ListCreateAPIView):
     permission_classes = (IsAdminUser,)
 
     def list(self, request, *args, **kwargs):
+        grouping = {'category': 'product__category', 'users': 'customer', 'time': 'timestamp__date',
+                    'cost': 'orderproduct__price'}
+        filtering = {'category': 'product__category', 'users': 'customer', 'time': 'timestamp__date__range',
+                     'cost': 'orderproduct__price__range'}
         data = request.data
         type_ = data.get('type')
+        filter_ = data.get('filter')
+        value = json.loads(data.get('value'))
+        # Записать словарик и сделать проверку
+        print(Order.objects.filter(**{filtering.get(filter_): value}).values(grouping.get(type_)))
+
         if type_ == 'category':
             a = Order.objects.values('product__category').annotate(
                 total_cost_=Sum(F('orderproduct__price') * F('orderproduct__quantity')),
