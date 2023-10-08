@@ -257,9 +257,9 @@ class CreateUpdateDestroyRatingFeedbackAPIView(generics.UpdateAPIView, generics.
 
     def create(self, request, *args, **kwargs):
         data = request.data
-        commented_id = data.get('commented_id')
+        parent_id = data.get('parent_id')
         user = self.request.user
-        if not commented_id:
+        if not parent_id:
             product = Product.objects.get(id=self.kwargs.get('pk'))
             if not Rating_Feedback.objects.filter(user=user, product_id=product).exists():
                 if OrderProduct.objects.filter(order_id__customer=user, product_id=product).exists():
@@ -270,7 +270,7 @@ class CreateUpdateDestroyRatingFeedbackAPIView(generics.UpdateAPIView, generics.
                 return Handler().not_purchased_product()
             return Handler().rating_already_exist()
         else:
-            Rating_Feedback.objects.create(feedback=data.get('feedback'), user=user, commented_id=commented_id)
+            Rating_Feedback.objects.create(feedback=data.get('feedback'), user=user, parent_id=parent_id)
             return Handler().success()
 
     def update(self, request, *args, **kwargs):
