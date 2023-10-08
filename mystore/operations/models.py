@@ -2,9 +2,9 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.contrib.auth.models import User
 from django.db.models import Q
-from django.db.models.signals import post_save
-from django.dispatch import receiver
 from eav.decorators import register_eav
+from mptt.fields import TreeForeignKey
+from mptt.models import MPTTModel
 
 
 class Сategory(models.Model):
@@ -76,26 +76,28 @@ class OrderProduct(models.Model):
     price = models.PositiveIntegerField()
 
 
-class Rating_Feedback(models.Model):
+class Rating_Feedback(MPTTModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, null=True)
     rating = models.PositiveIntegerField(null=True)
     feedback = models.CharField(max_length=255, null=True)
-    commented = models.ForeignKey('self', on_delete=models.CASCADE, null=True, related_name='feedback_comment')
+    parent = TreeForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='children')
 
     def save(self, *args, **kwargs):
-        if self.commented_id is None:
+        if self.parent is None:
             if self.rating is None:
                 raise ValueError("When adding feedback, you must specify the rating")
             super(Rating_Feedback, self).save(*args, **kwargs)
         else:
             if self.rating is not None:
                 raise ValueError("You can't leave the rating on someone else's rating")
+            elif self.feedback is None:
+                raise ValueError("You can't leave comments without text")
             self.product = None
             super(Rating_Feedback, self).save(*args, **kwargs)
 
     class Meta:
-        constraints = [models.UniqueConstraint(condition=Q(commented=None), fields=['user', 'product'],
+        constraints = [models.UniqueConstraint(condition=Q(parent=None), fields=['user', 'product'],
                                                name='Checking the existence of a parent')]
 
     def __str__(self):

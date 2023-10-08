@@ -2,28 +2,22 @@ from rest_framework import serializers
 from .models import Product, Cart, CartProduct, Order, OrderProduct, Rating_Feedback, ProductPriceInfo
 
 
-class CommentSerializer(serializers.ModelSerializer):
-    def to_representation(self, instance):
-        self.fields['feedback_comment'] = CommentSerializer(many=True, read_only=True)
-        return super(CommentSerializer, self).to_representation(instance)
+class RatingFeedbackSerializer(serializers.ModelSerializer):
+    children = serializers.SerializerMethodField()
+
+    def get_children(self, obj):
+        return RatingFeedbackSerializer(obj.get_children(), many=True).data
 
     class Meta:
         model = Rating_Feedback
-        fields = ('user_id', 'feedback', 'id', 'commented_id', 'feedback_comment', )
+        fields = ('user', 'rating', 'feedback', 'id', 'parent', 'children',)
 
 
 class ProductRetrieveSerializer(serializers.ModelSerializer):
     class ProductPriceHistory(serializers.ModelSerializer):
         class Meta:
             model = ProductPriceInfo
-            fields = ('price', 'timestamp', )
-
-    class RatingFeedbackSerializer(serializers.ModelSerializer):
-        feedback_comment = CommentSerializer(many=True, read_only=True)
-
-        class Meta:
-            model = Rating_Feedback
-            fields = ('user', 'rating', 'feedback', 'id', 'feedback_comment',)
+            fields = ('price', 'timestamp',)
 
     attributes = serializers.DictField(source='eav.get_values_dict', read_only=True)
     rating_feedback = RatingFeedbackSerializer(source='rating_feedback_set', many=True, read_only=True)
