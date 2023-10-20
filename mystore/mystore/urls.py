@@ -16,6 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import include, path
+from drf_yasg.inspectors import SwaggerAutoSchema
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, TokenVerifyView
 from django.urls import re_path
 from rest_framework import permissions
@@ -34,6 +35,16 @@ schema_view = get_schema_view(
     public=True,
     permission_classes=(permissions.AllowAny,),
 )
+
+
+class CustomAutoSchema(SwaggerAutoSchema):
+    def get_tags(self, operation_keys=None):
+        tags = self.overrides.get('tags', None) or getattr(self.view, 'my_tags', [])
+        if not tags:
+            if operation_keys[0] != 'token':
+                tags = [operation_keys[1]]
+        return tags
+
 
 urlpatterns = [
     path('swagger<format>/', schema_view.without_ui(cache_timeout=0), name='schema-json'),
