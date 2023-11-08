@@ -1,0 +1,44 @@
+version: '3'
+
+services:
+  django:
+    build: ..
+    container_name: django
+    command: bash -c "python manage.py migrate && gunicorn -c gunicorn_config.py mystore.wsgi"
+    ports:
+      - '8000:8000'
+    depends_on:
+      - postgresql
+
+  postgresql:
+    image: postgres:latest
+    restart: always
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 12345
+    container_name: postgresql
+
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
+
+  celery:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command: bash -c "cd mystore/ && celery -A mystore worker -l info"
+    volumes:
+      - .:/app
+    depends_on:
+      - postgresql
+      - redis
+
+  nginx:
+    image: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - /etc/nginx/conf.d/mystore.conf:/etc/nginx/conf.d/nginx.conf
+      - ./static:/static
